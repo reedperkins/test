@@ -14,6 +14,8 @@
 		const BALL_SIZE = 8;
 		const PLAYER_SPEED_MULTIPLIER = 4;
 		const BALL_SPEED_MULTIPLIER = 5;
+		const SCOREBOARD_OFFSET_X = 60;
+		const SCOREBOARD_OFFSET_Y = 20;
 		const X_MIN = 0;
 		const Y_MIN = 0;
 		let X_MAX = window.innerWidth;
@@ -93,6 +95,99 @@
 			max = Math.floor(max);
 			return Math.floor(Math.random() * (max - min + 1)) + min;
 		}
+
+		function updateState(pressedKeys) {
+			const ball = state.ball;
+			const [player1, player2] = [state.player1, state.player2];
+
+			// Check left wall collision
+			if (ball.x <= X_MIN) {
+				state.score.player2++;
+				app.reset();
+				console.log(`Score ${state.score.player1} - ${state.score.player2}`);
+				return;
+			}
+
+			// Check right wall collision
+			if ((ball.x + ball.width) >= X_MAX) {
+				state.score.player1++;
+				app.reset();
+				console.log(`Score ${state.score.player1} - ${state.score.player2}`);
+				return;
+			}
+
+			// Check paddle collisions
+			if (
+				// Left paddle
+				(ball.x >= player1.x
+					&& ball.x <= (player1.x + player1.width)
+					&& ball.y >= player1.y
+					&& ball.y <= (player1.y + player2.height))
+				// Right paddle
+				|| ((ball.x + ball.width) >= player2.x
+					&& (ball.x + ball.width) <= (player2.x + player2.width)
+					&& ball.y >= player2.y
+					&& ball.y <= (player2.y + player2.height))
+			) {
+				ball.dx = -ball.dx;
+			}
+
+			// Check floor/ceiling collision
+			if (ball.y <= Y_MIN // ceiling hit
+				|| (ball.y + ball.height) >= Y_MAX) { // floor hit
+				ball.dy = -ball.dy;
+			}
+
+			// Update ball position
+			ball.x = ball.x + (ball.dx * state.speeds.ball);
+			ball.y = ball.y + (ball.dy * state.speeds.ball);
+
+			// Update paddle positions
+			for (const [k, v] of Object.entries(pressedKeys)) {
+				if (k === 'w' && v) {
+					const y = Math.max(player1.y - state.speeds.player1, Y_MIN);
+					player1.y = y;
+				}
+				if (k === 's' && v) {
+					const y = Math.min(player1.y + state.speeds.player1, Y_MAX - player1.height);
+					player1.y = y;
+				}
+				if (k === 'up' && v) {
+					const y = Math.max(player2.y - state.speeds.player2, Y_MIN);
+					player2.y = y;
+				}
+				if (k === 'down' && v) {
+					const y = Math.min(player2.y + state.speeds.player2, Y_MAX - player2.height);
+					player2.y = y;
+				}
+			}
+		}
+
+		function drawState(app) {
+			// Draw entity positions
+			app.getNode('player1').x = state.player1.x;
+			app.getNode('player1').y = state.player1.y;
+			app.getNode('player2').x = state.player2.x;
+			app.getNode('player2').y = state.player2.y;
+			app.getNode('ball').x = state.ball.x;
+			app.getNode('ball').y = state.ball.y;
+
+			// Draw score
+			app.context.fillStyle = 'black';
+			app.context.font = '24px serif';
+			app.context.fillText(
+				`Score ${state.score.player1} - ${state.score.player2}`,
+				X_MAX / 2 - SCOREBOARD_OFFSET_X,
+				SCOREBOARD_OFFSET_Y + Y_MAX / 100 * 3
+			);
+
+			let overlay = document.getElementById('paused-overlay');
+			if (state.paused) {
+				overlay.style.visibility = 'visible';
+			} else {
+				overlay.style.visibility = 'hidden';
+			}
+		}
 		app.reset = function () {
 			state = {
 				...getInitialState(),
@@ -146,16 +241,12 @@
 			this.nodes.push(state.ball);
 		};
 
-		app.onUpdate = function(time){
-			this.getNode('black-box').y++;
-
-			if(Math.cos(this.timestamp / 100) > 0){
-				this.getNode('red-box').direction = -1;
-			}else{
-				this.getNode('red-box').direction = 1;
+		app.onUpdate = function (time) {
+			if (!state.paused) {
+				pressedKeys = { ...state.pressedKeys }; // Freeze so that updates can't occur while state is updating
+				updateState(pressedKeys);
 			}
-
-			this.getNode('red-box').x+=this.getNode('red-box').direction;
+			drawState(this);
 		};
 	</script>
 </body>
