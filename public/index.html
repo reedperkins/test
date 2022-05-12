@@ -230,8 +230,12 @@
 			window.onresize = function () {
 				X_MAX = window.innerWidth;
 				Y_MAX = window.innerHeight;
-				player1.x = (X_MAX / 100) * PADDLE_MARGIN_MULTIPLIER;
-				player2.x = X_MAX - ((X_MAX / 100) * PADDLE_MARGIN_MULTIPLIER) - PADDLE_WIDTH;
+				app.width = X_MAX;
+				app.height = Y_MAX;
+				app.canvas.width = X_MAX;
+				app.canvas.height = Y_MAX;
+				state.player1.x = (X_MAX / 100) * PADDLE_MARGIN_MULTIPLIER;
+				state.player2.x = X_MAX - ((X_MAX / 100) * PADDLE_MARGIN_MULTIPLIER) - PADDLE_WIDTH;
 			}
 
 			// Define canvas dimensions
