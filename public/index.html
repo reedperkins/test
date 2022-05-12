@@ -14,6 +14,11 @@
 		const BALL_SIZE = 8;
 		const PLAYER_SPEED_MULTIPLIER = 4;
 		const BALL_SPEED_MULTIPLIER = 5;
+		const X_MIN = 0;
+		const Y_MIN = 0;
+		let X_MAX = window.innerWidth;
+		let Y_MAX = window.innerHeight;
+
 		class Entity {
 			constructor(x, y, id, color) {
 				this.x = x;
@@ -99,16 +104,46 @@
 		app.pause = function () {
 			state.paused = !state.paused;
 		}
+
+		app.onInit = function () {
+			// Register keydown events
+			document.addEventListener('keydown', e => {
+				switch (e.keyCode) {
+					case 32: app.pause(); break; // spacebar
+					case 38: state.pressedKeys.up = true; break; // up arrow
+					case 40: state.pressedKeys.down = true; break; // down arrow
+					case 87: state.pressedKeys.w = true; break; // 'w'
+					case 83: state.pressedKeys.s = true; break; // 's'
+				}
 			});
 
-			this.nodes.push({
-				id : 'black-box',
-				x  : 50,
-				y  : 0,
-				width  : 150,
-				height : 150,
-				color  : 'black'
+			// Register keyup events
+			document.addEventListener('keyup', e => {
+				switch (e.keyCode) {
+					case 38: state.pressedKeys.up = false; break; // up arrow
+					case 40: state.pressedKeys.down = false; break; // down arrow
+					case 87: state.pressedKeys.w = false; break; // 'w'
+					case 83: state.pressedKeys.s = false; break; // 's'
+				}
 			});
+
+			window.onresize = function () {
+				X_MAX = window.innerWidth;
+				Y_MAX = window.innerHeight;
+				player1.x = (X_MAX / 100) * PADDLE_MARGIN_MULTIPLIER;
+				player2.x = X_MAX - ((X_MAX / 100) * PADDLE_MARGIN_MULTIPLIER) - PADDLE_WIDTH;
+			}
+
+			// Define canvas dimensions
+			app.width = X_MAX;
+			app.height = Y_MAX;
+			app.canvas.width = X_MAX;
+			app.canvas.height = Y_MAX;
+
+			// Initialize canvas nodes
+			this.nodes.push(state.player1);
+			this.nodes.push(state.player2);
+			this.nodes.push(state.ball);
 		};
 
 		app.onUpdate = function(time){
