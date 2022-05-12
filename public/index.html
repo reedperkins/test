@@ -7,7 +7,94 @@
 	<canvas id="canvas" width="800" height="400"></canvas>
 	<script type="text/javascript" src="js/app.js"></script>
 	<script type="text/javascript">
-		//Sample functions, remove these functions and design ping-pong game with onInit and onUpdate.
+
+		const PADDLE_MARGIN_MULTIPLIER = 4;
+		const PADDLE_HEIGHT = 70;
+		const PADDLE_WIDTH = 5;
+		const BALL_SIZE = 8;
+		const PLAYER_SPEED_MULTIPLIER = 4;
+		const BALL_SPEED_MULTIPLIER = 5;
+		class Entity {
+			constructor(x, y, id, color) {
+				this.x = x;
+				this.y = y;
+				this.id = id;
+				this.color = color;
+			}
+		}
+
+		class Paddle extends Entity {
+			constructor(x, y, id, color) {
+				super(x, y, id, color);
+				this.height = PADDLE_HEIGHT;
+				this.width = PADDLE_WIDTH;
+			}
+		}
+
+		class Ball extends Entity {
+			constructor(x, y, id, color, dx, dy) {
+				super(x, y, id, color);
+				this.height = BALL_SIZE;
+				this.width = BALL_SIZE;
+				this.dx = dx || 1;
+				this.dy = dy || 1;
+			}
+		}
+
+		function getInitialState() {
+			return {
+				paused: false,
+				pressedKeys: {
+					w: false,
+					s: false,
+					up: false,
+					down: false
+				},
+				player1: new Paddle(
+					(X_MAX / 100) * PADDLE_MARGIN_MULTIPLIER,
+					(Y_MAX / 2) - (PADDLE_HEIGHT / 2),
+					'player1',
+					'red'
+				),
+				player2: new Paddle(
+					X_MAX - ((X_MAX / 100) * PADDLE_MARGIN_MULTIPLIER) - PADDLE_WIDTH,
+					(Y_MAX / 2) - (PADDLE_HEIGHT / 2),
+					'player2',
+					'black'),
+				ball: new Ball(
+					Math.round(X_MAX / 2),
+					Math.round(Y_MAX / 2),
+					'ball',
+					'green',
+					getRandomInt(0, 1) === 0 ? -1 : 1,
+					getRandomInt(0, 1) === 0 ? -1 : 1
+				),
+				score: {
+					player1: 0,
+					player2: 0
+				},
+				speeds: {
+					player1: PLAYER_SPEED_MULTIPLIER,
+					player2: PLAYER_SPEED_MULTIPLIER,
+					ball: BALL_SPEED_MULTIPLIER
+				}
+			};
+		}
+
+		let state = getInitialState();
+
+		function getRandomInt(min, max) {
+			min = Math.ceil(min);
+			max = Math.floor(max);
+			return Math.floor(Math.random() * (max - min + 1)) + min;
+		}
+		app.reset = function () {
+			state = {
+				...getInitialState(),
+				window: state.window,
+				score: state.score,
+			};
+		}
 
 		app.onInit = function(){
 			this.nodes.push({
