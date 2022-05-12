@@ -96,15 +96,9 @@
 			};
 		}
 
-		app.onInit = function(){
-			this.nodes.push({
-				id : 'red-box',
-				x  : 100,
-				y  : 0,
-				width  : 100,
-				height : 100,
-				color  : 'red',
-				direction : 0
+		app.pause = function () {
+			state.paused = !state.paused;
+		}
 			});
 
 			this.nodes.push({
