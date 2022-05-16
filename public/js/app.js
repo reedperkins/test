@@ -6,6 +6,8 @@ var app = {
 	//resizing
 	width   : 800,
 	height  : 400,
+	x		: 0,
+	y		: 0,
 
 	//nodes
 	nodes   : [],
@@ -29,7 +31,7 @@ var app = {
 		window.requestAnimationFrame(this.render.bind(this));
 	},
 	clear  : function(){
-		this.context.clearRect(0, 0, this.width, this.height);
+		this.context.clearRect(this.x, this.y, this.x + this.width, this.y + this.height);
 	},
 	update : function(){
 	    var dt = Date.now() - this.lastUpdate;
