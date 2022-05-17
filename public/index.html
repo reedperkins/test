@@ -15,23 +15,23 @@
                 <div>
                     Player 1
                     <div>
-                        <input type="radio" name="p1" value="bot">
-                        <label for="p1-bot">Bot</label>
-                    </div>
-                    <div>
                         <input type="radio" name="p1" value="hum">
                         <label for="p1-hum">Human</label>
+                    </div>
+                    <div>
+                        <input type="radio" name="p1" value="bot">
+                        <label for="p1-bot">Bot</label>
                     </div>
                 </div>
                 <div>
                     Player 2
                     <div>
-                        <input type="radio" name="p2" value="bot">
-                        <label for="p2-bot">Bot</label>
-                    </div>
-                    <div>
                         <input type="radio" name="p2" value="hum">
                         <label for="p2-hum">Human</label>
+                    </div>
+                    <div>
+                        <input type="radio" name="p2" value="bot">
+                        <label for="p2-bot">Bot</label>
                     </div>
                 </div>
             </div>
@@ -42,12 +42,12 @@
     </div>
     <script type="text/javascript" src="js/app.js"></script>
     <script type="text/javascript">
-        const PADDLE_MARGIN_MULTIPLIER = 4;
+        const PADDLE_MARGIN_OFFSET = 4;
         const PADDLE_HEIGHT = 70;
         const PADDLE_WIDTH = 5;
         const BALL_SIZE = 8;
-        const PLAYER_SPEED_MULTIPLIER = 4;
-        const BALL_SPEED_MULTIPLIER = 5;
+        const PLAYER_SPEED = 4;
+        const BALL_SPEED = 5;
         const SCOREBOARD_OFFSET_X = 170;
         const SCOREBOARD_OFFSET_Y = 60;
 
@@ -96,14 +96,14 @@
                     down: false
                 },
                 player1: new Paddle(
-                    (X_MAX / 100) * PADDLE_MARGIN_MULTIPLIER,
+                    (X_MAX / 100) * PADDLE_MARGIN_OFFSET,
                     (Y_MAX / 2) - (PADDLE_HEIGHT / 2),
                     'player1',
                     'white',
                     false
                 ),
                 player2: new Paddle(
-                    X_MAX - ((X_MAX / 100) * PADDLE_MARGIN_MULTIPLIER) - PADDLE_WIDTH,
+                    X_MAX - ((X_MAX / 100) * PADDLE_MARGIN_OFFSET) - PADDLE_WIDTH,
                     (Y_MAX / 2) - (PADDLE_HEIGHT / 2),
                     'player2',
                     'white',
@@ -122,9 +122,9 @@
                     player2: 0
                 },
                 speeds: {
-                    player1: PLAYER_SPEED_MULTIPLIER,
-                    player2: PLAYER_SPEED_MULTIPLIER,
-                    ball: BALL_SPEED_MULTIPLIER
+                    player1: PLAYER_SPEED,
+                    player2: PLAYER_SPEED,
+                    ball: BALL_SPEED
                 },
                 window: {
                     xMin: X_MIN,
@@ -143,19 +143,16 @@
             return Math.floor(Math.random() * (max - min + 1)) + min;
         }
 
-        function updateState(pressedKeys) {
-            const ball = state.ball;
-            const { xMin, yMin, xMax, yMax } = state.window;
-            const [player1, player2] = [state.player1, state.player2];
-
-            // Check left wall collision
-            if (ball.x <= X_MIN) {
+        function checkLeftWallCollision(ball, xMin) {
+            if (ball.x <= xMin) {
                 state.score.player2++;
                 app.reset();
                 console.log(`Score ${state.score.player1} - ${state.score.player2}`);
                 return;
             }
+        }
 
+        function checkRightWallCollision(ball, xMax) {
             // Check right wall collision
             if ((ball.x + ball.width) >= X_MAX) {
                 state.score.player1++;
@@ -163,8 +160,9 @@
                 console.log(`Score ${state.score.player1} - ${state.score.player2}`);
                 return;
             }
+        }
 
-            // Check paddle collisions
+        function checkPaddleCollisions(ball, player1, player2) {
             if (
                 // Left paddle
                 (ball.x >= player1.x
@@ -179,68 +177,80 @@
             ) {
                 ball.dx = -ball.dx;
             }
+        }
 
-            // Check floor/ceiling collision
-            if (ball.y <= Y_MIN // ceiling hit
-                || (ball.y + ball.height) >= Y_MAX) { // floor hit
+        function checkFloorCeilingCollision(ball, yMin, yMax) {
+            if (ball.y <= yMin // ceiling hit
+                || (ball.y + ball.height) >= yMax) { // floor hit
                 ball.dy = -ball.dy;
             }
+        }
 
-            // Update ball position
+        function updateBallPosition(ball) {
             ball.x = ball.x + (ball.dx * state.speeds.ball);
             ball.y = ball.y + (ball.dy * state.speeds.ball);
+        }
 
+        function updatePaddlePositions(pressedKeys, yMin, yMax, player1, player2) {
             // Update paddle positions
             for (const [k, v] of Object.entries(pressedKeys)) {
                 if (!player1.isBot) {
                     if (k === 'w' && v) {
-                        const y = Math.max(player1.y - state.speeds.player1, Y_MIN);
+                        const y = Math.max(player1.y - state.speeds.player1, yMin);
                         player1.y = y;
                     }
                     if (k === 's' && v) {
-                        const y = Math.min(player1.y + state.speeds.player1, Y_MAX - player1.height);
+                        const y = Math.min(player1.y + state.speeds.player1, yMax - player1.height);
                         player1.y = y;
                     }
                 }
                 if (!player2.isBot) {
                     if (k === 'up' && v) {
-                        const y = Math.max(player2.y - state.speeds.player2, Y_MIN);
+                        const y = Math.max(player2.y - state.speeds.player2, yMin);
                         player2.y = y;
                     }
                     if (k === 'down' && v) {
-                        const y = Math.min(player2.y + state.speeds.player2, Y_MAX - player2.height);
+                        const y = Math.min(player2.y + state.speeds.player2, yMax - player2.height);
                         player2.y = y;
                     }
-                }
-            }
-
-            if (player1.isBot) {
-                if (ball.dy === -1) {
-                    player1.y = Math.max(player1.y - state.speeds.player1, Y_MIN)
-                } else {
-                    player1.y = Math.min(player1.y + state.speeds.player1, Y_MAX - player1.height)
-                }
-            }
-
-            if (player2.isBot) {
-                if (ball.dy === -1) {
-                    player2.y = Math.max(player2.y - state.speeds.player2, Y_MIN)
-                } else {
-                    player2.y = Math.min(player2.y + state.speeds.player2, Y_MAX - player2.height)
                 }
             }
         }
 
-        function drawState(app) {
-            // Draw entity positions
+        function updateBotPosition(ball, yMin, yMax, player, speed) {
+            if (player.isBot) {
+                if (ball.dy === -1) {
+                    player.y = Math.max(player.y - speed, yMin)
+                } else {
+                    player.y = Math.min(player.y + speed, yMax - player.height)
+                }
+            }
+        }
+
+        function updateState(pressedKeys) {
+            const ball = state.ball;
+            const { xMin, yMin, xMax, yMax } = state.window;
+            const [player1, player2] = [state.player1, state.player2];
+            checkLeftWallCollision(ball, xMin);
+            checkRightWallCollision(ball, xMax);
+            checkPaddleCollisions(ball, player1, player2);
+            checkFloorCeilingCollision(ball, yMin, yMax);
+            updateBallPosition(ball);
+            updatePaddlePositions(pressedKeys, yMin, yMax, player1, player2)
+            updateBotPosition(ball, yMin, yMax, player1, state.speeds.player1);
+            updateBotPosition(ball, yMin, yMax, player2, state.speeds.player2);
+        }
+
+        function drawEntityPosition(app) {
             app.getNode('player1').x = state.player1.x;
             app.getNode('player1').y = state.player1.y;
             app.getNode('player2').x = state.player2.x;
             app.getNode('player2').y = state.player2.y;
             app.getNode('ball').x = state.ball.x;
             app.getNode('ball').y = state.ball.y;
+        }
 
-            // Draw score
+        function drawScore(app) {
             app.context.fillStyle = 'white';
             app.context.font = '48px Courier New';
             app.context.fillText(
@@ -248,24 +258,33 @@
                 X_MAX / 2 - SCOREBOARD_OFFSET_X,
                 SCOREBOARD_OFFSET_Y + Y_MAX / 100 * 3
             );
+        }
 
+        function drawCenterLine(app) {
             let mid = app.width / 2;
             let barH = 10;
             let barW = 3;
-
-            // Draw center line
             for (let i = 0; i < app.height / barH; i++) {
                 if (i % 2 === 0) {
                     app.context.fillRect(mid, i * barH, barW, barH);
                 }
             }
+        }
 
+        function drawOverlay(app) {
             let overlay = document.getElementById('paused-overlay');
             if (state.paused) {
                 overlay.style.visibility = 'visible';
             } else {
                 overlay.style.visibility = 'hidden';
             }
+        }
+
+        function drawState(app) {
+            drawEntityPosition(app);
+            drawScore(app);
+            drawCenterLine(app);
+            drawOverlay(app);
         }
 
         app.reset = function () {
@@ -283,7 +302,7 @@
             state.paused = !state.paused;
         }
 
-        app.onInit = function () {
+        function setDimensions() {
             containerBox = document.querySelector('#canvas-container').getBoundingClientRect();
             X_MAX = containerBox.width;
             Y_MAX = containerBox.height;
@@ -295,9 +314,9 @@
             app.height = Y_MAX;
             canvas.width = app.width;
             canvas.height = app.height;
-            canvas.style.backgroundColor = 'black'
+        }
 
-            // Register keydown events
+        function registerKeydownEvents() {
             document.addEventListener('keydown', e => {
                 switch (e.keyCode) {
                     case 32: app.pause(); break; // spacebar
@@ -307,8 +326,9 @@
                     case 83: state.pressedKeys.s = true; break; // 's'
                 }
             });
+        }
 
-            // Register keyup events
+        function registerKeyupEvents() {
             document.addEventListener('keyup', e => {
                 switch (e.keyCode) {
                     case 38: state.pressedKeys.up = false; break; // up arrow
@@ -317,8 +337,9 @@
                     case 83: state.pressedKeys.s = false; break; // 's'
                 }
             });
+        }
 
-            // Register controls
+        function registerControls() {
             document.querySelectorAll('input[name="p1"]').forEach(i => {
                 i.addEventListener('change', e => {
                     const type = e.target.value;
@@ -329,7 +350,6 @@
                     }
                 })
             });
-
             document.querySelectorAll('input[name="p2"]').forEach(i => {
                 i.addEventListener('change', e => {
                     const type = e.target.value;
@@ -340,23 +360,20 @@
                     }
                 })
             });
+        }
+
+        app.onInit = function () {
+            setDimensions();
+            canvas.style.backgroundColor = 'black'
+            registerKeydownEvents();
+            registerKeyupEvents();
+            registerControls();
 
             window.onresize = function () {
-                containerBox = document.querySelector('#canvas-container').getBoundingClientRect();
-                X_MAX = containerBox.width;
-                Y_MAX = containerBox.height;
-                state.window.xMax = X_MAX;
-                state.window.yMax = Y_MAX;
-                app.x = X_MIN;
-                app.y = Y_MIN;
-                app.width = X_MAX
-                app.height = Y_MAX;
-                canvas.width = app.width;
-                canvas.height = app.height;
-                state.player1.x = (X_MAX / 100) * PADDLE_MARGIN_MULTIPLIER;
-                state.player2.x = X_MAX - ((X_MAX / 100) * PADDLE_MARGIN_MULTIPLIER) - PADDLE_WIDTH;
+                setDimensions();
+                state.player1.x = (X_MAX / 100) * PADDLE_MARGIN_OFFSET;
+                state.player2.x = X_MAX - ((X_MAX / 100) * PADDLE_MARGIN_OFFSET) - PADDLE_WIDTH;
             }
-
 
             // Initialize canvas nodes
             this.nodes.push(state.player1);
