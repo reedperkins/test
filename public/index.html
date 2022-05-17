@@ -9,27 +9,30 @@
 
 <body>
     <div id="main">
-        <div id="controls">
-            <div>
-                Player 1
+        <div style="border: 1px solid black;">
+            <span id="paused-overlay">Game Paused</span>
+            <div id="controls">
                 <div>
-                    <input type="radio" name="p1" id="p1-bot">
-                    <label for="p1-bot">Bot</label>
+                    Player 1
+                    <div>
+                        <input type="radio" name="p1" value="bot">
+                        <label for="p1-bot">Bot</label>
+                    </div>
+                    <div>
+                        <input type="radio" name="p1" value="hum">
+                        <label for="p1-hum">Human</label>
+                    </div>
                 </div>
                 <div>
-                    <input type="radio" name="p1" id="p1-hum">
-                    <label for="p1-hum">Human</label>
-                </div>
-            </div>
-            <div>
-                Player 2
-                <div>
-                    <input type="radio" name="p2" id="p2-bot">
-                    <label for="p2-bot">Bot</label>
-                </div>
-                <div>
-                    <input type="radio" name="p2" id="p2-hum">
-                    <label for="p2-hum">Human</label>
+                    Player 2
+                    <div>
+                        <input type="radio" name="p2" value="bot">
+                        <label for="p2-bot">Bot</label>
+                    </div>
+                    <div>
+                        <input type="radio" name="p2" value="hum">
+                        <label for="p2-hum">Human</label>
+                    </div>
                 </div>
             </div>
         </div>
@@ -37,10 +40,6 @@
             <canvas id="canvas"></canvas>
         </div>
     </div>
-
-
-
-    <span id="paused-overlay">Game Paused</span>
     <script type="text/javascript" src="js/app.js"></script>
     <script type="text/javascript">
         const PADDLE_MARGIN_MULTIPLIER = 4;
@@ -49,8 +48,8 @@
         const BALL_SIZE = 8;
         const PLAYER_SPEED_MULTIPLIER = 4;
         const BALL_SPEED_MULTIPLIER = 5;
-        const SCOREBOARD_OFFSET_X = 60;
-        const SCOREBOARD_OFFSET_Y = 20;
+        const SCOREBOARD_OFFSET_X = 170;
+        const SCOREBOARD_OFFSET_Y = 60;
 
         let containerBox = document.querySelector('#canvas-container').getBoundingClientRect();
         let canvas = document.querySelector('canvas');
@@ -58,8 +57,6 @@
         let Y_MIN = 0;
         let X_MAX = containerBox.width;
         let Y_MAX = containerBox.height;
-
-        console.log([X_MIN, X_MAX, Y_MIN, Y_MAX])
 
         class Entity {
             constructor(x, y, id, color) {
@@ -102,19 +99,21 @@
                     (X_MAX / 100) * PADDLE_MARGIN_MULTIPLIER,
                     (Y_MAX / 2) - (PADDLE_HEIGHT / 2),
                     'player1',
-                    'red',
-                    true
+                    'white',
+                    false
                 ),
                 player2: new Paddle(
                     X_MAX - ((X_MAX / 100) * PADDLE_MARGIN_MULTIPLIER) - PADDLE_WIDTH,
                     (Y_MAX / 2) - (PADDLE_HEIGHT / 2),
                     'player2',
-                    'black'),
+                    'white',
+                    false
+                ),
                 ball: new Ball(
                     Math.round(X_MAX / 2),
                     Math.round(Y_MAX / 2),
                     'ball',
-                    'green',
+                    'white',
                     getRandomInt(0, 1) === 0 ? -1 : 1,
                     getRandomInt(0, 1) === 0 ? -1 : 1
                 ),
@@ -126,6 +125,12 @@
                     player1: PLAYER_SPEED_MULTIPLIER,
                     player2: PLAYER_SPEED_MULTIPLIER,
                     ball: BALL_SPEED_MULTIPLIER
+                },
+                window: {
+                    xMin: X_MIN,
+                    xMax: X_MAX,
+                    yMin: Y_MIN,
+                    yMax: Y_MAX
                 }
             };
         }
@@ -139,8 +144,8 @@
         }
 
         function updateState(pressedKeys) {
-            console.log(Y_MAX)
             const ball = state.ball;
+            const { xMin, yMin, xMax, yMax } = state.window;
             const [player1, player2] = [state.player1, state.player2];
 
             // Check left wall collision
@@ -236,13 +241,24 @@
             app.getNode('ball').y = state.ball.y;
 
             // Draw score
-            app.context.fillStyle = 'black';
-            app.context.font = '24px serif';
+            app.context.fillStyle = 'white';
+            app.context.font = '48px Courier New';
             app.context.fillText(
-                `Score ${state.score.player1} - ${state.score.player2}`,
+                `${state.score.player1}          ${state.score.player2}`,
                 X_MAX / 2 - SCOREBOARD_OFFSET_X,
                 SCOREBOARD_OFFSET_Y + Y_MAX / 100 * 3
             );
+
+            let mid = app.width / 2;
+            let barH = 10;
+            let barW = 3;
+
+            // Draw center line
+            for (let i = 0; i < app.height / barH; i++) {
+                if (i % 2 === 0) {
+                    app.context.fillRect(mid, i * barH, barW, barH);
+                }
+            }
 
             let overlay = document.getElementById('paused-overlay');
             if (state.paused) {
@@ -253,10 +269,14 @@
         }
 
         app.reset = function () {
+            p1IsBot = state.player1.isBot;
+            p2IsBot = state.player2.isBot;
             state = {
                 ...getInitialState(),
                 score: state.score,
             };
+            state.player1.isBot = p1IsBot;
+            state.player2.isBot = p2IsBot;
         }
 
         app.pause = function () {
@@ -267,13 +287,15 @@
             containerBox = document.querySelector('#canvas-container').getBoundingClientRect();
             X_MAX = containerBox.width;
             Y_MAX = containerBox.height;
+            state.window.xMax = X_MAX;
+            state.window.yMax = Y_MAX;
             app.x = X_MIN;
             app.y = Y_MIN;
             app.width = X_MAX;
             app.height = Y_MAX;
             canvas.width = app.width;
             canvas.height = app.height;
-            console.log([X_MIN, X_MAX, Y_MIN, Y_MAX])
+            canvas.style.backgroundColor = 'black'
 
             // Register keydown events
             document.addEventListener('keydown', e => {
@@ -296,17 +318,41 @@
                 }
             });
 
+            // Register controls
+            document.querySelectorAll('input[name="p1"]').forEach(i => {
+                i.addEventListener('change', e => {
+                    const type = e.target.value;
+                    if (type === 'bot') {
+                        state.player1.isBot = true;
+                    } else if (type === 'hum') {
+                        state.player1.isBot = false;
+                    }
+                })
+            });
+
+            document.querySelectorAll('input[name="p2"]').forEach(i => {
+                i.addEventListener('change', e => {
+                    const type = e.target.value;
+                    if (type === 'bot') {
+                        state.player2.isBot = true;
+                    } else if (type === 'hum') {
+                        state.player2.isBot = false;
+                    }
+                })
+            });
+
             window.onresize = function () {
                 containerBox = document.querySelector('#canvas-container').getBoundingClientRect();
                 X_MAX = containerBox.width;
                 Y_MAX = containerBox.height;
+                state.window.xMax = X_MAX;
+                state.window.yMax = Y_MAX;
                 app.x = X_MIN;
                 app.y = Y_MIN;
                 app.width = X_MAX
                 app.height = Y_MAX;
                 canvas.width = app.width;
                 canvas.height = app.height;
-                console.log([X_MIN, X_MAX, Y_MIN, Y_MAX])
                 state.player1.x = (X_MAX / 100) * PADDLE_MARGIN_MULTIPLIER;
                 state.player2.x = X_MAX - ((X_MAX / 100) * PADDLE_MARGIN_MULTIPLIER) - PADDLE_WIDTH;
             }

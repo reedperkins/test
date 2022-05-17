@@ -11,26 +11,26 @@ body {
     position: fixed;
 }
 
-/* canvas {
-    /* position: absolute; */
-} */
+canvas {
+    position: relative;
+}
 
 #paused-overlay {
     visibility: hidden;
 }
 
 #controls {
-    padding: 1em 0;
+    padding: 0.5em 0 1em;
     display: flex;
     justify-content: space-around;
-    border: 1px solid black;
 }
 
 #canvas-container {
     margin: 0;
     padding: 0;
     display: flex;
-    flex-grow: 2;
+    flex-grow: 1;
+    min-height: 0;
 }
 
 #main {

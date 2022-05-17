@@ -42,7 +42,14 @@ var app = {
 			var node = this.nodes[index];
 
 			this.context.fillStyle = node.color;
-			this.context.fillRect(node.x, node.y, node.width, node.height);
+			if (node.id === 'ball') {
+				this.context.beginPath();
+				this.context.arc(node.x, node.y, node.width, 0, 2 * Math.PI);
+    			this.context.fill();
+			} else {
+
+				this.context.fillRect(node.x, node.y, node.width, node.height);
+			}
 		}
 
 		this.lastUpdate = Date.now();
