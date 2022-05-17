@@ -1,0 +1,42 @@
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    position: fixed;
+}
+
+canvas {
+    position: relative;
+}
+
+#paused-overlay {
+    visibility: hidden;
+}
+
+#controls {
+    padding: 0.5em 0 1em;
+    display: flex;
+    justify-content: space-around;
+}
+
+#canvas-container {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-grow: 1;
+    min-height: 0;
+}
+
+#main {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}

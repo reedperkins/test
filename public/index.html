@@ -1,46 +1,394 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-	<title>Ping Pong Game</title>
+    <title>Ping Pong Game</title>
+    <link rel="stylesheet" href="styles.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
+
 <body>
-	<canvas id="canvas" width="800" height="400"></canvas>
-	<script type="text/javascript" src="js/app.js"></script>
-	<script type="text/javascript">
-		//Sample functions, remove these functions and design ping-pong game with onInit and onUpdate.
+    <div id="main">
+        <div style="border: 1px solid black;">
+            <span id="paused-overlay">Game Paused</span>
+            <div id="controls">
+                <div>
+                    Player 1
+                    <div>
+                        <input type="radio" name="p1" value="hum">
+                        <label for="p1-hum">Human</label>
+                    </div>
+                    <div>
+                        <input type="radio" name="p1" value="bot">
+                        <label for="p1-bot">Bot</label>
+                    </div>
+                </div>
+                <div>
+                    Player 2
+                    <div>
+                        <input type="radio" name="p2" value="hum">
+                        <label for="p2-hum">Human</label>
+                    </div>
+                    <div>
+                        <input type="radio" name="p2" value="bot">
+                        <label for="p2-bot">Bot</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="canvas-container">
+            <canvas id="canvas"></canvas>
+        </div>
+    </div>
+    <script type="text/javascript" src="js/app.js"></script>
+    <script type="text/javascript">
+        const PADDLE_MARGIN_OFFSET = 4;
+        const PADDLE_HEIGHT = 70;
+        const PADDLE_WIDTH = 5;
+        const BALL_SIZE = 8;
+        const PLAYER_SPEED = 4;
+        const BALL_SPEED = 5;
+        const SCOREBOARD_OFFSET_X = 170;
+        const SCOREBOARD_OFFSET_Y = 60;
 
-		app.onInit = function(){
-			this.nodes.push({
-				id : 'red-box',
-				x  : 100,
-				y  : 0,
-				width  : 100,
-				height : 100,
-				color  : 'red',
-				direction : 0
-			});
+        let containerBox = document.querySelector('#canvas-container').getBoundingClientRect();
+        let canvas = document.querySelector('canvas');
+        let X_MIN = 0;
+        let Y_MIN = 0;
+        let X_MAX = containerBox.width;
+        let Y_MAX = containerBox.height;
 
-			this.nodes.push({
-				id : 'black-box',
-				x  : 50,
-				y  : 0,
-				width  : 150,
-				height : 150,
-				color  : 'black'
-			});
-		};
+        class Entity {
+            constructor(x, y, id, color) {
+                this.x = x;
+                this.y = y;
+                this.id = id;
+                this.color = color;
+            }
+        }
 
-		app.onUpdate = function(time){
-			this.getNode('black-box').y++;
+        class Paddle extends Entity {
+            constructor(x, y, id, color, isBot) {
+                super(x, y, id, color);
+                this.height = PADDLE_HEIGHT;
+                this.width = PADDLE_WIDTH;
+                this.isBot = false || isBot;
+            }
+        }
 
-			if(Math.cos(this.timestamp / 100) > 0){
-				this.getNode('red-box').direction = -1;
-			}else{
-				this.getNode('red-box').direction = 1;
-			}
+        class Ball extends Entity {
+            constructor(x, y, id, color, dx, dy) {
+                super(x, y, id, color);
+                this.height = BALL_SIZE;
+                this.width = BALL_SIZE;
+                this.dx = dx || 1;
+                this.dy = dy || 1;
+            }
+        }
 
-			this.getNode('red-box').x+=this.getNode('red-box').direction;
-		};
-	</script>
+        function getInitialState() {
+            return {
+                paused: false,
+                pressedKeys: {
+                    w: false,
+                    s: false,
+                    up: false,
+                    down: false
+                },
+                player1: new Paddle(
+                    (X_MAX / 100) * PADDLE_MARGIN_OFFSET,
+                    (Y_MAX / 2) - (PADDLE_HEIGHT / 2),
+                    'player1',
+                    'white',
+                    false
+                ),
+                player2: new Paddle(
+                    X_MAX - ((X_MAX / 100) * PADDLE_MARGIN_OFFSET) - PADDLE_WIDTH,
+                    (Y_MAX / 2) - (PADDLE_HEIGHT / 2),
+                    'player2',
+                    'white',
+                    false
+                ),
+                ball: new Ball(
+                    Math.round(X_MAX / 2),
+                    Math.round(Y_MAX / 2),
+                    'ball',
+                    'white',
+                    getRandomInt(0, 1) === 0 ? -1 : 1,
+                    getRandomInt(0, 1) === 0 ? -1 : 1
+                ),
+                score: {
+                    player1: 0,
+                    player2: 0
+                },
+                speeds: {
+                    player1: PLAYER_SPEED,
+                    player2: PLAYER_SPEED,
+                    ball: BALL_SPEED
+                },
+                window: {
+                    xMin: X_MIN,
+                    xMax: X_MAX,
+                    yMin: Y_MIN,
+                    yMax: Y_MAX
+                }
+            };
+        }
+
+        let state = getInitialState();
+
+        function getRandomInt(min, max) {
+            min = Math.ceil(min);
+            max = Math.floor(max);
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function checkLeftWallCollision(ball, xMin) {
+            if (ball.x <= xMin) {
+                state.score.player2++;
+                app.reset();
+                console.log(`Score ${state.score.player1} - ${state.score.player2}`);
+                return;
+            }
+        }
+
+        function checkRightWallCollision(ball, xMax) {
+            // Check right wall collision
+            if ((ball.x + ball.width) >= X_MAX) {
+                state.score.player1++;
+                app.reset();
+                console.log(`Score ${state.score.player1} - ${state.score.player2}`);
+                return;
+            }
+        }
+
+        function checkPaddleCollisions(ball, player1, player2) {
+            if (
+                // Left paddle
+                (ball.x >= player1.x
+                    && ball.x <= (player1.x + player1.width)
+                    && ball.y >= player1.y
+                    && ball.y <= (player1.y + player2.height))
+                // Right paddle
+                || ((ball.x + ball.width) >= player2.x
+                    && (ball.x + ball.width) <= (player2.x + player2.width)
+                    && ball.y >= player2.y
+                    && ball.y <= (player2.y + player2.height))
+            ) {
+                ball.dx = -ball.dx;
+            }
+        }
+
+        function checkFloorCeilingCollision(ball, yMin, yMax) {
+            if (ball.y <= yMin // ceiling hit
+                || (ball.y + ball.height) >= yMax) { // floor hit
+                ball.dy = -ball.dy;
+            }
+        }
+
+        function updateBallPosition(ball) {
+            ball.x = ball.x + (ball.dx * state.speeds.ball);
+            ball.y = ball.y + (ball.dy * state.speeds.ball);
+        }
+
+        function updatePaddlePositions(pressedKeys, yMin, yMax, player1, player2) {
+            // Update paddle positions
+            for (const [k, v] of Object.entries(pressedKeys)) {
+                if (!player1.isBot) {
+                    if (k === 'w' && v) {
+                        const y = Math.max(player1.y - state.speeds.player1, yMin);
+                        player1.y = y;
+                    }
+                    if (k === 's' && v) {
+                        const y = Math.min(player1.y + state.speeds.player1, yMax - player1.height);
+                        player1.y = y;
+                    }
+                }
+                if (!player2.isBot) {
+                    if (k === 'up' && v) {
+                        const y = Math.max(player2.y - state.speeds.player2, yMin);
+                        player2.y = y;
+                    }
+                    if (k === 'down' && v) {
+                        const y = Math.min(player2.y + state.speeds.player2, yMax - player2.height);
+                        player2.y = y;
+                    }
+                }
+            }
+        }
+
+        function updateBotPosition(ball, yMin, yMax, player, speed) {
+            if (player.isBot) {
+                if (ball.dy === -1) {
+                    player.y = Math.max(player.y - speed, yMin)
+                } else {
+                    player.y = Math.min(player.y + speed, yMax - player.height)
+                }
+            }
+        }
+
+        function updateState(pressedKeys) {
+            const ball = state.ball;
+            const { xMin, yMin, xMax, yMax } = state.window;
+            const [player1, player2] = [state.player1, state.player2];
+            checkLeftWallCollision(ball, xMin);
+            checkRightWallCollision(ball, xMax);
+            checkPaddleCollisions(ball, player1, player2);
+            checkFloorCeilingCollision(ball, yMin, yMax);
+            updateBallPosition(ball);
+            updatePaddlePositions(pressedKeys, yMin, yMax, player1, player2)
+            updateBotPosition(ball, yMin, yMax, player1, state.speeds.player1);
+            updateBotPosition(ball, yMin, yMax, player2, state.speeds.player2);
+        }
+
+        function drawEntityPosition(app) {
+            app.getNode('player1').x = state.player1.x;
+            app.getNode('player1').y = state.player1.y;
+            app.getNode('player2').x = state.player2.x;
+            app.getNode('player2').y = state.player2.y;
+            app.getNode('ball').x = state.ball.x;
+            app.getNode('ball').y = state.ball.y;
+        }
+
+        function drawScore(app) {
+            app.context.fillStyle = 'white';
+            app.context.font = '48px Courier New';
+            app.context.fillText(
+                `${state.score.player1}          ${state.score.player2}`,
+                X_MAX / 2 - SCOREBOARD_OFFSET_X,
+                SCOREBOARD_OFFSET_Y + Y_MAX / 100 * 3
+            );
+        }
+
+        function drawCenterLine(app) {
+            let mid = app.width / 2;
+            let barH = 10;
+            let barW = 3;
+            for (let i = 0; i < app.height / barH; i++) {
+                if (i % 2 === 0) {
+                    app.context.fillRect(mid, i * barH, barW, barH);
+                }
+            }
+        }
+
+        function drawOverlay(app) {
+            let overlay = document.getElementById('paused-overlay');
+            if (state.paused) {
+                overlay.style.visibility = 'visible';
+            } else {
+                overlay.style.visibility = 'hidden';
+            }
+        }
+
+        function drawState(app) {
+            drawEntityPosition(app);
+            drawScore(app);
+            drawCenterLine(app);
+            drawOverlay(app);
+        }
+
+        app.reset = function () {
+            p1IsBot = state.player1.isBot;
+            p2IsBot = state.player2.isBot;
+            state = {
+                ...getInitialState(),
+                score: state.score,
+            };
+            state.player1.isBot = p1IsBot;
+            state.player2.isBot = p2IsBot;
+        }
+
+        app.pause = function () {
+            state.paused = !state.paused;
+        }
+
+        function setDimensions() {
+            containerBox = document.querySelector('#canvas-container').getBoundingClientRect();
+            X_MAX = containerBox.width;
+            Y_MAX = containerBox.height;
+            state.window.xMax = X_MAX;
+            state.window.yMax = Y_MAX;
+            app.x = X_MIN;
+            app.y = Y_MIN;
+            app.width = X_MAX;
+            app.height = Y_MAX;
+            canvas.width = app.width;
+            canvas.height = app.height;
+        }
+
+        function registerKeydownEvents() {
+            document.addEventListener('keydown', e => {
+                switch (e.keyCode) {
+                    case 32: app.pause(); break; // spacebar
+                    case 38: state.pressedKeys.up = true; break; // up arrow
+                    case 40: state.pressedKeys.down = true; break; // down arrow
+                    case 87: state.pressedKeys.w = true; break; // 'w'
+                    case 83: state.pressedKeys.s = true; break; // 's'
+                }
+            });
+        }
+
+        function registerKeyupEvents() {
+            document.addEventListener('keyup', e => {
+                switch (e.keyCode) {
+                    case 38: state.pressedKeys.up = false; break; // up arrow
+                    case 40: state.pressedKeys.down = false; break; // down arrow
+                    case 87: state.pressedKeys.w = false; break; // 'w'
+                    case 83: state.pressedKeys.s = false; break; // 's'
+                }
+            });
+        }
+
+        function registerControls() {
+            document.querySelectorAll('input[name="p1"]').forEach(i => {
+                i.addEventListener('change', e => {
+                    const type = e.target.value;
+                    if (type === 'bot') {
+                        state.player1.isBot = true;
+                    } else if (type === 'hum') {
+                        state.player1.isBot = false;
+                    }
+                })
+            });
+            document.querySelectorAll('input[name="p2"]').forEach(i => {
+                i.addEventListener('change', e => {
+                    const type = e.target.value;
+                    if (type === 'bot') {
+                        state.player2.isBot = true;
+                    } else if (type === 'hum') {
+                        state.player2.isBot = false;
+                    }
+                })
+            });
+        }
+
+        app.onInit = function () {
+            setDimensions();
+            canvas.style.backgroundColor = 'black'
+            registerKeydownEvents();
+            registerKeyupEvents();
+            registerControls();
+
+            window.onresize = function () {
+                setDimensions();
+                state.player1.x = (X_MAX / 100) * PADDLE_MARGIN_OFFSET;
+                state.player2.x = X_MAX - ((X_MAX / 100) * PADDLE_MARGIN_OFFSET) - PADDLE_WIDTH;
+            }
+
+            // Initialize canvas nodes
+            this.nodes.push(state.player1);
+            this.nodes.push(state.player2);
+            this.nodes.push(state.ball);
+        };
+
+        app.onUpdate = function (time) {
+            if (!state.paused) {
+                pressedKeys = { ...state.pressedKeys }; // Freeze so that updates can't occur while state is updating
+                updateState(pressedKeys);
+            }
+            drawState(this);
+        };
+    </script>
 </body>
+
 </html>
